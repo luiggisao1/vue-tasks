@@ -15,7 +15,7 @@ export class TaskAPI {
 
       return response.data;
     } catch {
-      throw new Error("Login failed");
+      throw new Error("error creating task");
     }
   }
 
@@ -30,7 +30,7 @@ export class TaskAPI {
 
   public async editTask(
     id: number,
-    data: Pick<TaskCreateData, "description" | "owner" | "title" | "due_date">,
+    data: Pick<TaskCreateData, "description" | "owner" | "title" | "due_date" | "status">,
   ): Promise<TaskData> {
     try {
       const response = await this.session.put(`tasks/${id}/`, data);

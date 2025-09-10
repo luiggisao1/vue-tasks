@@ -13,10 +13,32 @@ export class LoginAPI {
     try {
       const response = await this.session.post("login/", { username, password });
       this.session.defaults.headers.common["Authorization"] = `Bearer ${response.data.access}`;
-      localStorage.setItem("userData", response.data);
+      localStorage.setItem("refresh", response.data.refresh);
+      localStorage.setItem("access", response.data.access);
       return response.data.user;
     } catch {
       throw new Error("Login failed");
+    }
+  }
+
+  public async logout(): Promise<boolean> {
+    try {
+      const response = await this.session.post("logout/");
+      return response.status === 200;
+    } catch {
+      return false;
+    }
+  }
+
+  public async refreshToken(): Promise<void> {
+    try {
+      const refresh = localStorage.getItem("refresh");
+
+      const response = await this.session.post("token/refresh/", { refresh });
+      this.session.defaults.headers.common["Authorization"] = `Bearer ${response.data.access}`;
+      localStorage.setItem("access", response.data.access);
+    } catch {
+      throw new Error("Token refresh failed");
     }
   }
 }

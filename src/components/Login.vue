@@ -2,26 +2,44 @@
 import { ref } from "vue";
 import { LoginAPI } from "../api/Login";
 import { useUserStore } from "../store/User";
+import router from "../routes";
 
 const { setUser } = useUserStore();
-
-const emit = defineEmits<{
-  login: [];
-}>();
 
 const username = ref("");
 const password = ref("");
 const loading = ref(false);
+const errorMessage = ref("");
+const shakeError = ref(false);
 
 const handleSubmit = async () => {
   loading.value = true;
 
-  const api = new LoginAPI();
-  const user = await api.login(username.value, password.value);
-  setUser(user);
+  errorMessage.value = ""; // Clear previous error messages
 
-  loading.value = false;
-  emit("login");
+  try {
+    const api = new LoginAPI();
+    const user = await api.login(username.value, password.value);
+
+    if (user) {
+      setUser(user);
+      router.push({ path: "tasks" });
+    } else {
+      errorMessage.value = "Invalid username or password";
+      shakeError.value = true;
+      setTimeout(() => {
+        shakeError.value = false;
+      }, 500);
+    }
+  } catch (error) {
+    errorMessage.value = "Login failed. Please check your credentials and try again.";
+    shakeError.value = true;
+    setTimeout(() => {
+      shakeError.value = false;
+    }, 500);
+  } finally {
+    loading.value = false;
+  }
 };
 </script>
 
@@ -54,7 +72,7 @@ const handleSubmit = async () => {
                 type="username"
                 v-model="username"
                 required
-                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                :class="`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm ${errorMessage ? 'border-red-300' : 'border-gray-300'}`"
               />
             </div>
           </div>
@@ -70,9 +88,35 @@ const handleSubmit = async () => {
                 v-model="password"
                 required
                 autocomplete="current-password"
-                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                :class="`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm ${errorMessage ? 'border-red-300' : 'border-gray-300'}`"
                 placeholder="••••••••"
               />
+            </div>
+          </div>
+
+          <div
+            v-if="errorMessage"
+            :class="{ 'shake-animation': shakeError }"
+            class="p-3 rounded-md bg-red-50 border border-red-200"
+          >
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg
+                  class="h-5 w-5 text-red-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-red-700">{{ errorMessage }}</p>
+              </div>
             </div>
           </div>
 
@@ -104,3 +148,29 @@ const handleSubmit = async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.shake-animation {
+  animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+</style>

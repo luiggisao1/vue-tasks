@@ -1,13 +1,52 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import TaskForm from "./TaskForm.vue";
 import { TaskAPI } from "../api/Task";
+import { LoginAPI } from "../api/Login";
+import router from "../routes";
 
 import { useUserStore } from "../store/User";
 import { Task } from "../types";
 import { onMounted } from "vue";
 
 const userStore = useUserStore();
+
+const showProfileDropdown = ref(false);
 const api = new TaskAPI();
+const loginApi = new LoginAPI();
+
+const toggleProfileDropdown = () => {
+  showProfileDropdown.value = !showProfileDropdown.value;
+};
+
+const closeProfileDropdown = (event: MouseEvent) => {
+  if (!showProfileDropdown.value) return;
+
+  const dropdownElement = document.querySelector(".profile-dropdown");
+  const initialsButton = document.querySelector(".profile-button");
+
+  if (dropdownElement && initialsButton) {
+    if (!dropdownElement.contains(event.target as Node) && !initialsButton.contains(event.target as Node)) {
+      showProfileDropdown.value = false;
+    }
+  }
+};
+
+onMounted(() => {
+  document.addEventListener("click", closeProfileDropdown);
+});
+
+const logout = async () => {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
+
+  userStore.logout();
+  await loginApi.logout();
+
+  router.push({ path: "/login" });
+};
+
+const openDialog = ref(false);
 
 const tasks = ref<Task[]>([]);
 
@@ -23,52 +62,23 @@ onMounted(async () => {
 const editingIndex = ref(-1);
 const expandedTasks = ref<number[]>([]);
 
-// New task form
-const newTask = ref({
-  title: "",
-  description: "",
-  dueDate: "",
-  owner: userStore.id,
-});
-
-const validationErrors = ref({
-  title: false,
-});
-
-// Editing task
 const editingTask = ref<Partial<Task>>({});
 const editTitleField = ref<HTMLInputElement | null>(null);
 
-const activeTasks = computed(() => tasks.value.filter((task) => !task.completed).length);
 const completedTasks = computed(() => tasks.value.filter((task) => task.completed).length);
+const pendingTasks = computed(() => tasks.value.filter((task) => task.status === "pending").length);
+const inProgressTasks = computed(() => tasks.value.filter((task) => task.status === "in_progress").length);
 
-const addTask = async () => {
-  validationErrors.value.title = false;
-  let hasError = false;
-
-  if (!newTask.value.title.trim()) {
-    validationErrors.value.title = true;
-    hasError = true;
-  }
-
-  if (hasError) return;
-
-  const data = {
-    title: newTask.value.title.trim(),
-    description: newTask.value.description.trim(),
-    due_date: newTask.value.dueDate || undefined,
+const addTask = async (data: any) => {
+  const newTaskResponse = await api.post({
+    title: data.title,
+    description: data.description,
+    due_date: data.dueDate || undefined,
+    status: data.status,
     owner: userStore.id,
-  };
-
-  const newTaskResponse = await api.post(data);
+  });
   tasks.value.push(new Task(newTaskResponse));
-
-  newTask.value = {
-    title: "",
-    description: "",
-    dueDate: "",
-    owner: userStore.id,
-  };
+  openDialog.value = false;
 };
 
 const deleteTask = async (index: number) => {
@@ -84,8 +94,25 @@ const deleteTask = async (index: number) => {
   tasks.value.splice(index, 1);
 };
 
-const toggleTaskCompletion = (index: number) => {
-  tasks.value[index].status = "completed";
+const toggleTaskCompletion = async (index: number) => {
+  const currentTask = tasks.value[index];
+  const currentStatus = currentTask.status;
+  if (currentStatus === "pending") {
+    currentTask.status = "in_progress";
+  } else if (currentStatus === "in_progress") {
+    currentTask.status = "completed";
+    currentTask.completedAt = new Date().toISOString();
+  } else {
+    currentTask.status = "pending";
+    currentTask.completedAt = undefined;
+  }
+
+  const updatedTask = await api.editTask(currentTask.id, {
+    title: currentTask.title,
+    status: currentTask.status,
+    owner: userStore.id,
+  });
+  tasks.value[index] = new Task(updatedTask);
 };
 
 const toggleTaskDetails = (taskId: number) => {
@@ -98,8 +125,6 @@ const toggleTaskDetails = (taskId: number) => {
 };
 
 const startEditing = (index: number) => {
-  console.log("starteditign", index);
-
   editingIndex.value = index;
   const task = tasks.value[index];
 
@@ -108,11 +133,6 @@ const startEditing = (index: number) => {
     description: task.description,
     dueDate: "",
   };
-
-  // Focus the title field after the DOM updates
-  // nextTick(() => {
-  //   editTitleField.value?.focus();
-  // });
 };
 
 const saveEdit = async () => {
@@ -123,7 +143,7 @@ const saveEdit = async () => {
   task.description = editingTask.value.description?.trim() || "";
   task.dueDate = editingTask.value.dueDate || undefined;
 
-  const newTaskEdited = await api.editTask(editingIndex.value, {
+  const newTaskEdited = await api.editTask(task.id, {
     title: task.title,
     description: task.description,
     due_date: task.dueDate,
@@ -139,17 +159,13 @@ const cancelEdit = () => {
 };
 
 const clearCompleted = () => {
-  // Get IDs of tasks to be removed
   const tasksToRemove = tasks.value.filter((task) => task.completed).map((task) => task.id);
 
-  // Remove these tasks from expandedTasks if they're there
   expandedTasks.value = expandedTasks.value.filter((id) => !tasksToRemove.includes(id));
 
-  // Filter out completed tasks
   tasks.value = tasks.value.filter((task) => !task.completed);
 };
 
-// Helper functions
 const formatDate = (dateString: string | null): string => {
   if (!dateString) return "Not set";
 
@@ -175,17 +191,14 @@ const getInitials = (name: string): string => {
 <template>
   <div class="max-w-4xl mx-auto p-6">
     <div class="bg-white rounded-xl shadow-xl overflow-hidden">
-      <!-- Header with DataPoint background image -->
       <div
         class="bg-cover bg-center relative"
         style="
           background-image: url(&quot;https://datapoint.tech/wp-content/uploads/2022/07/background_new_header_4.jpg&quot;);
         "
       >
-        <!-- Semi-transparent overlay -->
         <div class="absolute inset-0 bg-blue-500 bg-opacity-40"></div>
 
-        <!-- Header content -->
         <div class="relative p-6 z-10">
           <div class="flex justify-between items-center">
             <div>
@@ -196,78 +209,80 @@ const getInitials = (name: string): string => {
               <div class="bg-opacity-20 rounded-lg px-3 py-2 backdrop-blur-sm text-white text-sm">
                 <span>Welcome, {{ userStore.name }}</span>
               </div>
-              <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white">
-                <span class="text-white font-medium">{{ getInitials(userStore.name) }}</span>
+              <div class="relative">
+                <button
+                  @click.stop="toggleProfileDropdown"
+                  class="profile-button w-10 h-10 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center border-2 border-white transition-all duration-200"
+                  title="Profile options"
+                >
+                  <span class="text-white font-medium">{{ getInitials(userStore.name) }}</span>
+                </button>
+                <Transition name="dropdown">
+                  <div
+                    v-if="showProfileDropdown"
+                    class="profile-dropdown absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 transform origin-top-right"
+                  >
+                    <div class="px-4 py-3 border-b border-gray-100">
+                      <p class="text-sm leading-5 font-medium text-gray-900 truncate">{{ userStore.name }}</p>
+                      <p class="text-xs leading-4 font-medium text-gray-500 truncate mt-1">{{ userStore.email }}</p>
+                    </div>
+                    <button
+                      @click="logout"
+                      class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 flex items-center"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4 mr-2"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M3 3a1 1 0 011 1v12a1 1 0 01-1 1h8a1 1 0 001-1v-2a1 1 0 10-2 0v1H4V5h6v1a1 1 0 102 0V4a1 1 0 00-1-1H3zm12.293 5.293a1 1 0 011.414 0l2 2a1 1 0 010 1.414l-2 2a1 1 0 01-1.414-1.414L16.586 11H7a1 1 0 110-2h9.586l-1.293-1.293a1 1 0 010-1.414z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
+                      Logout
+                    </button>
+                  </div>
+                </Transition>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Add Task Form -->
-      <div class="p-6 border-b">
-        <form @submit.prevent="addTask" class="space-y-4">
-          <!-- Task title -->
-          <div>
-            <label for="taskTitle" class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
-            <input
-              id="taskTitle"
-              v-model="newTask.title"
-              type="text"
-              placeholder="Enter task title..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-              :class="{ 'border-red-500': validationErrors.title }"
-            />
-            <p v-if="validationErrors.title" class="text-red-500 text-sm mt-1">Please enter a task title</p>
-          </div>
+      <TaskForm :is-open="openDialog" @close="openDialog = false" @add-task="addTask" />
 
-          <!-- Task description -->
-          <div>
-            <label for="taskDescription" class="block text-sm font-medium text-gray-700 mb-1"
-              >Description (optional)</label
-            >
-            <textarea
-              id="taskDescription"
-              v-model="newTask.description"
-              placeholder="Add more details about this task..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 min-h-[80px]"
-            ></textarea>
+      <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600">
+              {{ pendingTasks }} Pending
+            </span>
+            <span class="px-2 py-1 bg-amber-100 rounded-full text-xs font-medium text-amber-600">
+              {{ inProgressTasks }} In Progress
+            </span>
+            <span class="px-2 py-1 bg-green-100 rounded-full text-xs font-medium text-green-600">
+              {{ completedTasks }} Completed
+            </span>
           </div>
-
-          <!-- Due date -->
-          <div>
-            <label for="taskDueDate" class="block text-sm font-medium text-gray-700 mb-1">Due Date (optional)</label>
-            <input
-              id="taskDueDate"
-              v-model="newTask.dueDate"
-              type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <!-- Hidden field for task owner (current user) -->
-          <input type="hidden" v-model="newTask.owner" />
-
-          <!-- Submit button -->
-          <div class="flex justify-end">
-            <button
-              type="submit"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fill-rule="evenodd"
-                  d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-              <span class="ml-1">Add Task</span>
-            </button>
-          </div>
-        </form>
+          <button
+            @click="openDialog = true"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path
+                fill-rule="evenodd"
+                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            <span class="ml-1">New Task</span>
+          </button>
+        </div>
       </div>
 
-      <!-- Task List -->
       <div class="p-6">
         <div v-if="tasks.length === 0" class="text-center py-8">
           <svg
@@ -291,23 +306,41 @@ const getInitials = (name: string): string => {
           <li
             v-for="(task, index) in tasks"
             :key="task.id"
-            class="bg-white rounded-lg border border-gray-200 shadow-sm transform transition-all duration-300"
+            class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-4 transition-all duration-300"
             :class="{
               editing: editingIndex === index,
               completed: task.status === 'completed',
+              pending: task.status === 'pending',
+              in_progress: task.status === 'in_progress',
               overdue: task.isOverdue,
             }"
           >
-            <!-- View Mode -->
             <div v-if="editingIndex !== index">
-              <!-- Task header with title and actions -->
               <div class="p-4 flex items-center justify-between border-b border-gray-100">
-                <div class="flex items-center space-x-3">
+                <div class="flex items-center gap-3">
                   <button
                     @click="toggleTaskCompletion(index)"
-                    class="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center"
-                    :class="task.completed ? 'bg-green-500 border-green-500' : 'border-gray-400'"
+                    class="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center hover:scale-110 transition-transform"
+                    :class="{
+                      'bg-green-500 border-green-500': task.completed,
+                      'border-gray-400 hover:border-gray-600': task.status === 'pending',
+                      'bg-amber-100 border-amber-400': task.status === 'in_progress',
+                    }"
+                    :title="`Mark as ${task.status === 'pending' ? 'in progress' : task.status === 'in_progress' ? 'completed' : 'pending'}`"
                   >
+                    <svg
+                      v-if="task.status === 'in_progress'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4 text-amber-500"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                        clip-rule="evenodd"
+                      />
+                    </svg>
                     <svg
                       v-if="task.completed"
                       xmlns="http://www.w3.org/2000/svg"
@@ -322,16 +355,34 @@ const getInitials = (name: string): string => {
                       />
                     </svg>
                   </button>
-                  <h3
-                    class="text-lg font-medium transition-all duration-200"
-                    :class="{ 'line-through text-gray-400': task.completed }"
-                  >
-                    {{ task.title }}
-                  </h3>
+                  <div class="flex items-center gap-2">
+                    <h3
+                      class="text-lg font-medium transition-all duration-200"
+                      :class="{
+                        'line-through text-gray-400': task.completed,
+                        'text-orange-600': task.status === 'in_progress',
+                      }"
+                    >
+                      {{ task.title }}
+                    </h3>
+                    <span
+                      class="text-xs font-medium px-2 py-1 rounded-full"
+                      :class="{
+                        'bg-gray-100 text-gray-600': task.status === 'pending',
+                        'bg-amber-100 text-amber-600': task.status === 'in_progress',
+                        'bg-green-100 text-green-600': task.status === 'completed',
+                      }"
+                    >
+                      {{
+                        task.status === "in_progress"
+                          ? "In Progress"
+                          : task.status.charAt(0).toUpperCase() + task.status.slice(1)
+                      }}
+                    </span>
+                  </div>
                 </div>
 
                 <div class="flex space-x-2">
-                  <!-- Expand/collapse details button -->
                   <button
                     @click="toggleTaskDetails(task.id)"
                     class="text-gray-500 hover:text-blue-600 transition-colors p-1.5 hover:bg-blue-50 rounded-full"
@@ -382,17 +433,13 @@ const getInitials = (name: string): string => {
                 </div>
               </div>
 
-              <!-- Task details (expandable) -->
               <div v-show="expandedTasks.includes(task.id)" class="p-4 bg-gray-50 space-y-3">
-                <!-- Description -->
                 <div v-if="task.description" class="space-y-1">
                   <h4 class="text-sm font-medium text-gray-500">Description</h4>
                   <p class="text-sm text-gray-700 whitespace-pre-line">{{ task.description }}</p>
                 </div>
 
-                <!-- Dates & owner info -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <!-- Created date -->
                   <div class="space-y-1">
                     <h4 class="font-medium text-gray-500">Created</h4>
                     <div class="flex items-center space-x-1">
@@ -412,7 +459,6 @@ const getInitials = (name: string): string => {
                     </div>
                   </div>
 
-                  <!-- Due date -->
                   <div v-if="task.dueDate" class="space-y-1">
                     <h4 class="font-medium text-gray-500">Due</h4>
                     <div class="flex items-center space-x-1" :class="{ 'text-red-600': task.isOverdue }">
@@ -433,7 +479,6 @@ const getInitials = (name: string): string => {
                     </div>
                   </div>
 
-                  <!-- Owner info -->
                   <div class="space-y-1">
                     <h4 class="font-medium text-gray-500">Owner</h4>
                     <div class="flex items-center space-x-2">
@@ -447,7 +492,6 @@ const getInitials = (name: string): string => {
               </div>
             </div>
 
-            <!-- Edit Mode -->
             <div v-else class="p-4 space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Task Title</label>
@@ -475,8 +519,6 @@ const getInitials = (name: string): string => {
                   class="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-
-              <!-- Owner is always the current user -->
 
               <div class="flex justify-end space-x-2 pt-2">
                 <button
@@ -510,14 +552,8 @@ const getInitials = (name: string): string => {
           </li>
         </transition-group>
 
-        <!-- Task Counter -->
-        <div v-if="tasks.length > 0" class="mt-6 text-sm text-gray-500 flex justify-between">
-          <span>{{ activeTasks }} remaining</span>
-          <button
-            @click="clearCompleted"
-            class="text-blue-600 hover:text-blue-800 transition-colors"
-            v-if="completedTasks > 0"
-          >
+        <div v-if="completedTasks > 0" class="mt-6 flex justify-end">
+          <button @click="clearCompleted" class="text-blue-600 hover:text-blue-800 transition-colors text-sm">
             Clear completed ({{ completedTasks }})
           </button>
         </div>
@@ -527,7 +563,23 @@ const getInitials = (name: string): string => {
 </template>
 
 <style scoped>
-/* Transition styles for task list */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+}
 .task-list-enter-active,
 .task-list-leave-active {
   transition: all 0.5s ease;
@@ -552,10 +604,39 @@ const getInitials = (name: string): string => {
 }
 
 .completed {
-  opacity: 0.75;
+  opacity: 0.8;
+  border-left: 4px solid #10b981;
+}
+
+.pending {
+  border-left: 4px solid #6b7280;
+}
+
+.in_progress {
+  border-left: 4px solid #f59e0b;
 }
 
 .overdue:not(.completed) {
-  border-left: 3px solid #ef4444;
+  border-left: 4px solid #ef4444;
+}
+
+.task-list li:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-10px);
 }
 </style>
