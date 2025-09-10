@@ -1,5 +1,6 @@
 import type { AxiosInstance } from "axios";
 import axios from "axios";
+import router from "../routes";
 
 class CommonAPI {
   public session: AxiosInstance;
@@ -30,7 +31,7 @@ class CommonAPI {
           } catch (refreshError) {
             localStorage.removeItem("access");
             localStorage.removeItem("refresh");
-            window.location.href = "/login";
+            router.push({ name: "Login" });
             return Promise.reject(refreshError);
           }
         }

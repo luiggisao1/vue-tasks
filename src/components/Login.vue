@@ -23,7 +23,7 @@ const handleSubmit = async () => {
 
     if (user) {
       setUser(user);
-      router.push({ path: "tasks" });
+      router.push({ name: "Tasks" });
     } else {
       errorMessage.value = "Invalid username or password";
       shakeError.value = true;
