@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background circle with gradient -->
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+    <linearGradient id="darkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <style>
+      @media (prefers-color-scheme: dark) {
+        .dp-bg { fill: url(#darkGrad); }
+      }
+    </style>
+  </defs>
+
+  <!-- Main rounded square background -->
+  <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#grad)" class="dp-bg" />
+
+  <!-- Checkmark -->
+  <path
+    d="M10 16.5L14.5 21L22 11"
+    stroke="white"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Small stylized "D" in the corner -->
+  <path
+    d="M24 6.5C24 7.32843 23.3284 8 22.5 8C21.6716 8 21 7.32843 21 6.5C21 5.67157 21.6716 5 22.5 5C23.3284 5 24 5.67157 24 6.5Z"
+    fill="white"
+  />
+</svg>
