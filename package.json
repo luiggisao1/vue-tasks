@@ -2,14 +2,18 @@
   "name": "datapoint-ui",
   "private": true,
   "version": "0.0.0",
+  "homepage": "https://luiggisao1.github.io/vue-tasks/",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "axios": "^1.11.0",
+    "gh-pages": "^6.3.0",
     "pinia": "^3.0.3",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
