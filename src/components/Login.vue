@@ -65,7 +65,7 @@ const handleSubmit = async () => {
         <form @submit.prevent="handleSubmit" class="space-y-5">
           <!-- Email -->
           <div>
-            <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+            <label for="email" class="block text-sm font-medium text-gray-700">Username</label>
             <div class="mt-1">
               <input
                 id="username"

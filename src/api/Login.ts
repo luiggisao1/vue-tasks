@@ -11,7 +11,8 @@ export class LoginAPI {
 
   public async login(username: string, password: string): Promise<User> {
     try {
-      const response = await this.session.post("login/", { username, password });
+      const lowerUsername = username.toLowerCase();
+      const response = await this.session.post("login/", { username: lowerUsername, password });
       this.session.defaults.headers.common["Authorization"] = `Bearer ${response.data.access}`;
       localStorage.setItem("refresh", response.data.refresh);
       localStorage.setItem("access", response.data.access);

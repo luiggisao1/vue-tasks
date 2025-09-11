@@ -23,55 +23,71 @@
 
 ## 🚀 Live Demo
 
-Check out the live application deployed on GitHub Pages: [DataPoint Task Manager](https://duiggi.dev/vue-tasks/tasks)
+Check out the live application: [DataPoint Task Manager](https://datapoint-tasks.netlify.app/)
 
-## 💻 Tech Stack
+## 💻 Technologies Used
 
 - **Frontend Framework**: Vue 3 with Composition API
 - **Language**: TypeScript for type safety
 - **Build Tool**: Vite for lightning-fast development
-- **State Management**: Pinia
-- **HTTP Client**: Axios
+- **State Management**: Pinia for predictable state handling
+- **HTTP Client**: Axios for API communication
 - **Styling**: TailwindCSS with custom components
-- **Deployment**: GitHub Pages
+- **UI Components**: Custom-built Vue components
+- **Authentication**: JWT (JSON Web Token) based auth
 
-## 📦 Build for Production
 
-To build the app for production:
+## 👤 User Workflow
 
-```bash
-npm run build
-# or
-yarn build
-```
+The DataPoint Task Manager provides an intuitive experience for the end user:
 
-## 🚢 Deployment
+1. **Authentication**:
+   - Users begin at the login screen where they enter their credentials
+   - The system validates credentials and establishes a secure session
+   - Failed login attempts display clear error messages
 
-This project is deployed using GitHub Pages. I chose GitHub Pages for deployment because:
+2. **Task Management**:
+   - Upon login, users are presented with their task dashboard
+   - Tasks are visually organized by status with color coding:
+     - Gray for Pending tasks
+     - Amber/Orange for In Progress tasks
+     - Green for Completed tasks
+   - Overdue tasks are highlighted with a red indicator
 
-- It's simple to set up for small projects
-- It integrates perfectly with Vite's build system
-- It's free and reliable for static site hosting
-- It avoids the complexity of AWS Amplify for this scale of project
+3. **Task Operations**:
+   - **Create**: Users can add new tasks via the "New Task" button
+   - **Update**: Tasks can be edited by clicking the pencil icon button
+   - **Delete**: Remove tasks when they're no longer needed
+   - **Status Change**: Click the task status icon to cycle through status options
+   - **View Details**: Expand tasks to see full descriptions and other details
 
-To deploy to GitHub Pages:
+4. **Profile Management**:
+   - Access user profile options by clicking on the user's initials
+   - Logout securely when finished
 
-1. Update the `base` path in `vite.config.js` if deploying to a subfolder:
+The interface is designed to be intuitive, with visual feedback for all actions and a responsive layout that works across desktop and mobile devices.
 
-   ```js
-   export default defineConfig({
-     base: "/vue-tasks/",
-     // ...
-   });
-   ```
+## 🏗️ Architecture & Solution Approach
 
-2. Build your project:
+### Architecture
 
-   ```bash
-   npm run build
-   ```
+This project follows a modern frontend architecture:
 
-3. Deploy using the GitHub Pages workflow or manually from the `dist` folder.
+- **Component-Based Structure**: Modular Vue components for better maintainability
+- **Centralized State Management**: Using Pinia stores for predictable data flow
+- **API Layer Abstraction**: Dedicated API modules for backend communication
+- **Type Safety**: TypeScript interfaces and types throughout the application
+- **Responsive Design**: Mobile-first approach with TailwindCSS
+
+### Solution Approach
+
+The application was built with these principles in mind:
+
+1. **User Experience Focus**: Clean, intuitive interface with minimal learning curve
+2. **Performance Optimization**: Leveraging Vite for fast development and optimized builds
+3. **Maintainability**: Clear code structure and separation of concerns
+4. **Scalability**: Component architecture that can grow as new features are added
+5. **Security**: Token-based authentication with secure storage practices
 
 ## 🔐 Authentication
 
@@ -81,9 +97,35 @@ This application uses JWT (JSON Web Tokens) for authentication:
 - Refresh tokens for obtaining new access tokens
 - Automatic token refresh on expiration
 
+## 📋 Project Structure
+
+```
+datapoint-ui/
+├── public/              # Static assets
+│   ├── favicon.svg      # SVG favicon
+│   ├── icons/           # App icons for various platforms
+│   └── site.webmanifest # Progressive Web App manifest
+├── src/
+│   ├── api/             # API integration
+│   ├── assets/          # Project assets
+│   ├── components/      # Vue components
+│   │   ├── Login.vue    # Authentication component
+│   │   ├── TaskForm.vue # Task creation form
+│   │   └── Tasks.vue    # Main tasks component
+│   ├── model/           # Data models
+│   ├── routes/          # Vue router configuration
+│   ├── store/           # Pinia stores
+│   │   └── User.ts      # User state management
+│   ├── App.vue          # Root component
+│   ├── main.ts          # Application entry point
+│   ├── style.css        # Global styles
+│   └── types.ts         # TypeScript types/interfaces
+├── index.html           # HTML template
+└── vite.config.ts       # Vite configuration
+```
 
 ---
 
 <div align="center">
-  <p>Made for DataPoint Challenge</p>
+  <p>Made with ❤️ for DataPoint Challenge</p>
 </div>
