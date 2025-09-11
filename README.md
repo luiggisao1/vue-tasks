@@ -36,6 +36,17 @@ Check out the live application: [DataPoint Task Manager](https://datapoint-tasks
 - **UI Components**: Custom-built Vue components
 - **Authentication**: JWT (JSON Web Token) based auth
 
+## 🚢 Deployment
+
+This project is deployed using GitHub Pages through a GitHub Actions workflow:
+
+- **CI/CD**: Automated GitHub Actions workflow handles the deployment process
+- **Hosting**: GitHub Pages hosts the static build output
+- **Configuration**: Vite is configured with the correct base path for GitHub Pages
+- **Workflow**: On push to main branch, the app is built and deployed automatically
+- **Zero Downtime**: Seamless deployment ensures the application is always available
+
+The deployment workflow simplifies the process and ensures that the latest version is always available to users without manual intervention.
 
 ## 👤 User Workflow
 
@@ -101,6 +112,9 @@ This application uses JWT (JSON Web Tokens) for authentication:
 
 ```
 datapoint-ui/
+├── .github/            # GitHub configuration
+│   └── workflows/      # GitHub Actions workflows for CI/CD
+│       └── deploy.yml  # Deployment workflow for GitHub Pages
 ├── public/              # Static assets
 │   ├── favicon.svg      # SVG favicon
 │   ├── icons/           # App icons for various platforms
@@ -123,6 +137,44 @@ datapoint-ui/
 ├── index.html           # HTML template
 └── vite.config.ts       # Vite configuration
 ```
+
+## 🔄 GitHub Workflow
+
+The application is automatically deployed using a GitHub Actions workflow:
+
+```yaml
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: dist
+```
+
+This workflow runs automatically when changes are pushed to the main branch, building and deploying the application to GitHub Pages.
 
 ---
 
